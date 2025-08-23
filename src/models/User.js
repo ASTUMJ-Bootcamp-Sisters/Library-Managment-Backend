@@ -5,13 +5,6 @@ const jwt = require("jsonwebtoken");
 const userSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true },
-    username: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
     email: {
       type: String,
       required: true,
@@ -25,33 +18,36 @@ const userSchema = new mongoose.Schema(
       enum: ["super-admin", "admin", "user"],
       default: "user",
     },
+    refreshToken: { type: String },
+    isBlacklisted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-// Hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-// Compare password
 userSchema.methods.comparePassword = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
-// Generate JWT
-userSchema.methods.generateJWT = function () {
-  return jwt.sign({ id: this._id, role: this.role }, process.env.JWT_SECRET, {
-    expiresIn: "1d",
-  });
-};
+userSchema.methods.generateTokens = function () {
+  const accessToken = jwt.sign(
+    { id: this._id, role: this.role },
+    process.env.JWT_SECRET,
+    { expiresIn: "15m" }
+  );
 
-// Optional: helper to check if first user (for registration)
-userSchema.statics.isFirstUser = async function () {
-  const count = await this.countDocuments();
-  return count === 0;
+  const refreshToken = jwt.sign(
+    { id: this._id },
+    process.env.JWT_REFRESH_SECRET,
+    { expiresIn: "7d" }
+  );
+
+  return { accessToken, refreshToken };
 };
 
 module.exports = mongoose.model("User", userSchema);
