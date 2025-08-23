@@ -3,16 +3,24 @@ const cors = require("cors");
 const connectDB = require("./src/config/db");
 require("dotenv").config();
 
+//router
+const bookRoutes = require("./src/routes/bookRoutes");
+const borrowRoutes = require("./src/routes/borrowRoutes");
+
 const app = express();
 app.use(cors());
 app.use(express.json());
-// for mongo connected
+// mongo connected
 connectDB();
 
 // test route
 app.get("/", (req, res) => {
   res.send("Server is running...");
 });
+
+// book routes and borrow
+app.use("/api/books", bookRoutes);
+app.use("/api/borrow", borrowRoutes);
 
 // start server
 const PORT = process.env.PORT || 5000;

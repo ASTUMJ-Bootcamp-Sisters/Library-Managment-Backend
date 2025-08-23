@@ -1,4 +1,10 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
+
+const commentSchema = new mongoose.Schema({
+  user: {type: mongoose.Schema.Types.ObjectId, ref:"User", required:true},// who commented
+  text: {type:String,required:true},
+  createdAt: { type: Date, default: Date.now}
+});
 
 const bookSchema = new mongoose.Schema(
   {
@@ -12,19 +18,12 @@ const bookSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    image: {
+      type:String
+    },
     category: {
-      type: String,
-      enum: [
-        "Quran",
-        "Hadith",
-        "Fiqh",
-        "Aqeedah",
-        "Tafsir",
-        "Seerah",
-        "Islamic History",
-        "Other",
-      ],
-      default: "Other",
+      name: { type: String, required: true },   // e.g. Tafsir, Hadith, Fiqh
+      type: { type: String, enum: ["Islamic", "History", "Other"], default: "Islamic" }
     },
     language: {
       type: String,
@@ -44,9 +43,8 @@ const bookSchema = new mongoose.Schema(
       sparse: true, // allows some books without ISBN
     },
     copies: {
-      type: Number,
-      default: 1,
-      min: 0,
+       hardCopy: { type: Number, default: 0 },   // physical copies
+       eBook: { type: Boolean, default: false }
     },
     available: {
       type: Number,
@@ -57,8 +55,9 @@ const bookSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    comments:[commentSchema],
   },
   { timestamps: true }
 );
 
-export default mongoose.model("Book", bookSchema);
+module.exports = mongoose.model("Book", bookSchema);
