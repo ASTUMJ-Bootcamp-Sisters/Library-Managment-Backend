@@ -7,6 +7,6 @@ const router = express.Router();
 router.post("/", borrowBook);
 
 // Return a book
-router.put("/return/:id", returnBook); // :id is the borrow record ID
+router.put("/return/:id", returnBook); // :id = borrow record ID
 
 module.exports = router;
