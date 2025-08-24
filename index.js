@@ -1,10 +1,19 @@
 const express = require("express");
+
+const cors = require("cors");
+const connectDB = require("./src/config/db");
+require("dotenv").config();
+
+//router
+const bookRoutes = require("./src/routes/bookRoutes");
+const borrowRoutes = require("./src/routes/borrowRoutes")
 const mongoose = require("mongoose");
 const cors = require("cors");
 
 require("dotenv").config();
 
 const authRoutes = require("./src/routes/authRoutes");
+
 
 const app = express();
 
@@ -18,17 +27,20 @@ app.use(
 
 // ✅ Parse JSON requests
 app.use(express.json());
+// mongo connected
+connectDB();
 
 // ✅ Routes
 app.use("/api/auth", authRoutes);
+// book routes and borrow
+app.use("/api/books", bookRoutes);
+app.use("/api/borrow", borrowRoutes);
 
-// ✅ Connect to MongoDB and start server
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log("✅ MongoDB connected");
-    app.listen(process.env.PORT || 5000, () =>
-      console.log(`🚀 Server running on port ${process.env.PORT || 5000}`)
-    );
-  })
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
+
+
+// start server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
+
