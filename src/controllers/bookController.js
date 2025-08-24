@@ -47,11 +47,8 @@ async function addMultipleBooks(req, res) {
 // Update a book
 async function updateBook(req, res) {
   try {
-    const book = await Book.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
     );
+    if (!book) return res.status(404).json({ error: "Book not found" });
     res.json(book);
   } catch (err) {
     res.status(400).json({ error: err.message });
