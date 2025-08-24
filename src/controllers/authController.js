@@ -1,33 +1,43 @@
 const User = require("../models/User");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 
 // REGISTER
 exports.register = async (req, res) => {
   try {
-    const { fullName, username, email, password, role } = req.body;
+    const { fullName, email, password, role } = req.body;
+
+    if (!fullName || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
 
     const existingUser = await User.findOne({ email });
     if (existingUser)
       return res.status(400).json({ message: "Email already registered" });
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const user = await User.create({
       fullName,
-      username,
       email,
-      password,
-      role,
+      password: hashedPassword,
+      role: role || "user",
     });
-    const token = user.generateJWT();
+
+    const { accessToken, refreshToken } = user.generateTokens();
+    user.refreshToken = refreshToken;
+    await user.save();
 
     res.status(201).json({
       message: "User registered successfully",
       user: {
         id: user._id,
         fullName: user.fullName,
-        username: user.username,
         email: user.email,
         role: user.role,
       },
-      token,
+      accessToken,
+      refreshToken,
     });
   } catch (err) {
     res
@@ -36,37 +46,106 @@ exports.register = async (req, res) => {
   }
 };
 
+
 // LOGIN
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    // Find user
     const user = await User.findOne({ email }).select("+password");
-    if (!user)
-      return res.status(400).json({ message: "Invalid email or password" });
 
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch)
-      return res.status(400).json({ message: "Invalid email or password" });
+    // Check if email exists
+    if (!user) {
+      console.log(`Login attempt failed: email not registered - ${email}`);
+      return res.status(400).json({ message: "Email not registered" });
+    }
 
-    const token = user.generateJWT();
+    // Check if user is blacklisted
+    if (user.isBlacklisted) {
+      return res
+        .status(403)
+        .json({ message: "This account has been blacklisted" });
+    }
+
+    // Compare passwords
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      console.log(`Login attempt failed: incorrect password for ${email}`);
+      return res.status(400).json({ message: "Incorrect password" });
+    }
+
+    // Generate tokens
+    const { accessToken, refreshToken } = user.generateTokens();
+    user.refreshToken = refreshToken;
+    await user.save();
 
     res.status(200).json({
       message: "Login successful",
       user: {
         id: user._id,
         fullName: user.fullName,
-        username: user.username,
         email: user.email,
         role: user.role,
       },
-      token,
+      accessToken,
+      refreshToken,
     });
   } catch (err) {
     res.status(500).json({ message: "Login failed", error: err.message });
   }
 };
 
-// PROFILE (Protected)
+
+// REFRESH TOKEN
+exports.refresh = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken)
+      return res.status(401).json({ message: "Refresh token required" });
+
+    jwt.verify(
+      refreshToken,
+      process.env.JWT_REFRESH_SECRET,
+      async (err, decoded) => {
+        if (err)
+          return res.status(403).json({ message: "Invalid refresh token" });
+
+        const user = await User.findById(decoded.id);
+        if (!user || user.refreshToken !== refreshToken)
+          return res.status(403).json({ message: "Refresh token not valid" });
+
+        const { accessToken, refreshToken: newRefreshToken } =
+          user.generateTokens();
+        user.refreshToken = newRefreshToken;
+        await user.save();
+
+        res.json({ accessToken, refreshToken: newRefreshToken });
+      }
+    );
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Failed to refresh token", error: err.message });
+  }
+};
+
+// LOGOUT
+exports.logout = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.refreshToken = null;
+    await user.save();
+
+    res.json({ message: "Logged out successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Logout failed", error: err.message });
+  }
+};
+
+// PROFILE
 exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
@@ -109,15 +188,19 @@ exports.updateUserRole = async (req, res) => {
   }
 };
 
-// DELETE USER (Admin)
-exports.deleteUser = async (req, res) => {
+// BLACKLIST USER (Admin)
+exports.blacklistUser = async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { isBlacklisted: true },
+      { new: true }
+    ).select("-password");
     if (!user) return res.status(404).json({ message: "User not found" });
-    res.json({ message: "User deleted successfully" });
+    res.json({ message: "User has been blacklisted", user });
   } catch (err) {
     res
       .status(500)
-      .json({ message: "Failed to delete user", error: err.message });
+      .json({ message: "Failed to blacklist user", error: err.message });
   }
 };
