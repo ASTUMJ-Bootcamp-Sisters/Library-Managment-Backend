@@ -1,32 +1,47 @@
 const express = require("express");
+
 const cors = require("cors");
 const connectDB = require("./src/config/db");
 require("dotenv").config();
 
-// Routes
-const bookRoute = require("./src/routes/bookRoute");
-const borrowRoutes = require("./src/routes/borrowRoutes");
+//router
+const bookRoutes = require("./src/routes/bookRoutes");
+const borrowRoutes = require("./src/routes/borrowRoutes")
+const mongoose = require("mongoose");
+const cors = require("cors");
+
+require("dotenv").config();
+
+const authRoutes = require("./src/routes/authRoutes");
+
 
 const app = express();
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// ✅ Enable CORS for your frontend
+app.use(
+  cors({
+    origin: "http://localhost:5174", // frontend URL
+    credentials: true, // allow cookies if needed
+  })
+);
 
-// Connect MongoDB
+// ✅ Parse JSON requests
+
+app.use(express.json());
+// mongo connected
 connectDB();
 
-// Test route
-app.get("/", (req, res) => {
-  res.send("Server is running...");
-});
-
-// Book & Borrow routes
-app.use("/api/books", bookRoute);
+// ✅ Routes
+app.use("/api/auth", authRoutes);
+// book routes and borrow
+app.use("/api/books", bookRoutes);
 app.use("/api/borrow", borrowRoutes);
+
+
 
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
