@@ -8,7 +8,7 @@ require("dotenv").config();
 const bookRoutes = require("./src/routes/bookRoutes");
 const borrowRoutes = require("./src/routes/borrowRoutes")
 const mongoose = require("mongoose");
-const cors = require("cors");
+
 
 require("dotenv").config();
 
