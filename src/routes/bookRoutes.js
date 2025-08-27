@@ -1,4 +1,4 @@
-const express = require ("express");
+const express = require("express");
 const {
   getBooks,
   getBookById,
@@ -12,7 +12,9 @@ const router = express.Router();
 // Routes
 router.get("/", getBooks);
 router.get("/:id", getBookById);
-router.post("/",addBook);
+
+
+router.post("/", addBook);
 router.put("/:id", updateBook);
 router.delete("/:id", deleteBook);
 
