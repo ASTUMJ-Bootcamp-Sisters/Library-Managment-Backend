@@ -2,7 +2,7 @@ const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
-// REGISTER
+
 exports.register = async (req, res) => {
   try {
     const { fullName, email, password, role } = req.body;
@@ -47,7 +47,7 @@ exports.register = async (req, res) => {
 };
 
 
-// LOGIN
+
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -55,7 +55,7 @@ exports.login = async (req, res) => {
     // Find user
     const user = await User.findOne({ email }).select("+password");
 
-    // Check if email exists
+  
     if (!user) {
       console.log(`Login attempt failed: email not registered - ${email}`);
       return res.status(400).json({ message: "Email not registered" });
@@ -130,7 +130,7 @@ exports.refresh = async (req, res) => {
   }
 };
 
-// LOGOUT
+
 exports.logout = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -188,19 +188,31 @@ exports.updateUserRole = async (req, res) => {
   }
 };
 
-// BLACKLIST USER (Admin)
+// BLACKLIST/UNBLACKLIST USER (Admin)
 exports.blacklistUser = async (req, res) => {
   try {
+    let isBlacklisted;
+    if (typeof req.body.isBlacklisted === "boolean") {
+      isBlacklisted = req.body.isBlacklisted;
+    } else {
+      // If not provided, toggle the current value
+      const user = await User.findById(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      isBlacklisted = !user.isBlacklisted;
+    }
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { isBlacklisted: true },
+      { isBlacklisted },
       { new: true }
     ).select("-password");
     if (!user) return res.status(404).json({ message: "User not found" });
-    res.json({ message: "User has been blacklisted", user });
+    res.json({
+      message: isBlacklisted ? "User has been blacklisted" : "User has been unblacklisted",
+      user
+    });
   } catch (err) {
     res
       .status(500)
-      .json({ message: "Failed to blacklist user", error: err.message });
+      .json({ message: "Failed to update blacklist status", error: err.message });
   }
 };

@@ -13,7 +13,6 @@ router.post("/refresh", authController.refresh);
 router.post("/logout", authenticate, authController.logout);
 router.get("/profile", authenticate, authController.getProfile);
 
-// Admin routes
 router.get(
   "/users",
   authenticate,
@@ -26,6 +25,7 @@ router.put(
   authorizeRoles("admin", "super-admin"),
   authController.updateUserRole
 );
+
 router.put(
   "/users/:id/blacklist",
   authenticate,

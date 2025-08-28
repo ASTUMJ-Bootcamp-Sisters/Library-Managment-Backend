@@ -43,7 +43,7 @@ async function borrowBook(req, res) {
   }
 }
 
-// Return a book
+
 async function returnBook(req, res) {
   try {
     const { borrowId } = req.body;

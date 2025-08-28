@@ -1,6 +1,6 @@
 const express = require("express");
 
-const cors = require("cors");
+
 const connectDB = require("./src/config/db");
 require("dotenv").config();
 
@@ -20,19 +20,17 @@ const app = express();
 // ✅ Enable CORS for your frontend
 app.use(
   cors({
-    origin: "http://localhost:5174", // frontend URL
-    credentials: true, // allow cookies if needed
+    origin: "*", 
+    credentials: true, 
   })
 );
 
-// ✅ Parse JSON requests
 app.use(express.json());
 // mongo connected
 connectDB();
 
-// ✅ Routes
 app.use("/api/auth", authRoutes);
-// book routes and borrow
+
 app.use("/api/books", bookRoutes);
 app.use("/api/borrow", borrowRoutes);
 

@@ -1,6 +1,6 @@
 const Book = require ("../models/Book");
 
-// get all books
+
 async function getBooks(req,res) {
     try {
         const books = await  Book.find();
@@ -10,7 +10,6 @@ async function getBooks(req,res) {
     }
 }
 
-// get by id
 async function getBookById(req,res) {
     try {
         const book = await Book.findById(req.params.id);
