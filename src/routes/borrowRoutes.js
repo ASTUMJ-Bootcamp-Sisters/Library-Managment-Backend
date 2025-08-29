@@ -1,12 +1,12 @@
-
 const express = require("express");
 const router = express.Router();
 const { borrowBook, returnBook } = require("../controllers/borrowController");
+const { authenticate } = require("../middleware/auth"); // your auth middleware
 
 
-router.post("/", borrowBook);
+router.post("/", authenticate, borrowBook);
 
 
-router.post("/return", returnBook);
+router.post("/return", authenticate, returnBook);
 
 module.exports = router;

@@ -1,3 +1,21 @@
+// ADMIN DASHBOARD STATS
+const Book = require("../models/Book");
+const Borrow = require("../models/Borrow");
+
+exports.getAdminStats = async (req, res) => {
+  try {
+    const totalBooks = await Book.countDocuments();
+    const totalUsers = await require("../models/User").countDocuments();
+    const borrowedCount = await Borrow.countDocuments({ returned: false });
+    res.json({
+      totalBooks,
+      totalUsers,
+      borrowedCount
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch stats", error: err.message });
+  }
+};
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
