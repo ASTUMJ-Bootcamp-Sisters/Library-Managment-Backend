@@ -8,9 +8,9 @@ require("dotenv").config();
 const bookRoutes = require("./src/routes/bookRoutes");
 const borrowRoutes = require("./src/routes/borrowRoutes")
 const mongoose = require("mongoose");
-const cors = require("cors");
 
-require("dotenv").config();
+
+const cors = require("cors");
 
 const authRoutes = require("./src/routes/authRoutes");
 
@@ -20,10 +20,12 @@ const app = express();
 // ✅ Enable CORS for your frontend
 app.use(
   cors({
-    origin: "*", 
-    credentials: true, 
+    origin: "*", // frontend URL
+    credentials: true, // allow cookies if needed
   })
 );
+
+// ✅ Parse JSON requests
 
 app.use(express.json());
 // mongo connected
@@ -36,7 +38,7 @@ app.use("/api/borrow", borrowRoutes);
 
 
 
-// start server
+// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

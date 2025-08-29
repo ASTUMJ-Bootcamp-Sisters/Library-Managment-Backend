@@ -1,82 +1,138 @@
-// controllers/borrowController.js
 const Book = require("../models/Book");
 const Borrow = require("../models/Borrow");
 
-// Borrow a book
-async function borrowBook(req, res) {
+// Borrow a book (creates a pending request)
+const borrowBook = async (req, res) => {
   try {
-    const { bookId, duration } = req.body; // duration instead of dueDate
-    const studentId = req.user.id; // assume user is authenticated
+    const { bookId, duration } = req.body;
+    const user = req.user.id;
 
-    // 1. Find the book
-    const book = await Book.findById(bookId);
-    if (!book) return res.status(404).json({ error: "Book not found" });
+    let dueDate = new Date();
+    if (duration === "1w") dueDate.setDate(dueDate.getDate() + 7);
+    else if (duration === "2w") dueDate.setDate(dueDate.getDate() + 14);
+    else return res.status(400).json({ message: "Invalid duration format" });
 
-    // 2. Check availability
-    if (book.available <= 0) {
-      return res.status(400).json({ error: "No available copies" });
+    const foundBook = await Book.findById(bookId);
+    if (!foundBook) {
+      return res.status(404).json({ message: "Book not found" });
     }
 
-    // 3. Calculate dueDate based on duration
-    const dueDate = new Date();
-    if (duration === "1w") dueDate.setDate(dueDate.getDate() + 7);
-    else if (duration === "1m") dueDate.setMonth(dueDate.getMonth() + 1);
-    else if (duration === "2m") dueDate.setMonth(dueDate.getMonth() + 2);
-    else if (duration === "6m") dueDate.setMonth(dueDate.getMonth() + 6);
-    else return res.status(400).json({ error: "Invalid duration option" });
-
-    // 4. Create borrow record
-    const borrow = new Borrow({
-      student: studentId,
+    const newBorrow = new Borrow({
+      student: user,
       book: bookId,
       dueDate,
+      status: "Pending", // Default status is now Pending
     });
-    await borrow.save();
+    const savedBorrow = await newBorrow.save();
 
-    // 5. Decrease available count
-    book.available -= 1;
-    await book.save();
-
-    res.status(201).json({ message: "Book borrowed successfully", borrow });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(202).json({
+      message: "Book borrowing request sent to admin for approval",
+      borrow: savedBorrow,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
   }
-}
+};
 
-
-async function returnBook(req, res) {
+// Admin approves a borrow request
+const approveBorrow = async (req, res) => {
   try {
-    const { borrowId } = req.body;
-    const studentId = req.user.id; // assume user is authenticated
+    const borrowId = req.params.id;
+    const borrow = await Borrow.findById(borrowId).populate("book");
 
-    // 1. Find the borrow record
-    const borrow = await Borrow.findOne({ _id: borrowId, student: studentId });
-    if (!borrow) return res.status(404).json({ error: "Borrow record not found" });
-
-    // 2. Check if already returned
-    if (borrow.status === "Returned") {
-      return res.status(400).json({ error: "Book already returned" });
+    if (!borrow) {
+      return res.status(404).json({ message: "Borrow record not found" });
+    }
+    if (borrow.status !== "Pending") {
+      return res.status(400).json({ message: "Borrow request is not pending" });
+    }
+    if (borrow.book.available <= 0) {
+      return res.status(400).json({ message: "Book is not available" });
     }
 
-    // 3. Update borrow record
-    borrow.returnDate = new Date();
-    borrow.status = "Returned";
+    // Update status and decrement available count
+    borrow.status = "Borrowed";
+    await Book.findByIdAndUpdate(borrow.book._id, { $inc: { available: -1 } });
     await borrow.save();
 
-    // 4. Increase book availability
-    const book = await Book.findById(borrow.book);
-    if (book) {
-      book.available += 1;
-      await book.save();
+    res.json({ message: "Borrow request approved successfully", borrow });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Admin rejects a borrow request
+const rejectBorrow = async (req, res) => {
+  try {
+    const borrowId = req.params.id;
+    const borrow = await Borrow.findById(borrowId);
+
+    if (!borrow) {
+      return res.status(404).json({ message: "Borrow record not found" });
+    }
+    if (borrow.status !== "Pending") {
+      return res.status(400).json({ message: "Borrow request is not pending" });
     }
 
-    res.status(200).json({ message: "Book returned successfully", borrow });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    await Borrow.findByIdAndDelete(borrowId);
+
+    res.json({ message: "Borrow request rejected successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
   }
-}
+};
+
+// Return a book
+const returnBook = async (req, res) => {
+  try {
+    const borrowId = req.body.borrowId;
+    const user = req.user.id; // User from authenticated token
+
+    const borrow = await Borrow.findById(borrowId).populate("book");
+
+    if (!borrow)
+      return res.status(404).json({ message: "Borrow record not found" });
+
+    // Validate that the authenticated user is the student who borrowed the book
+    if (borrow.student.toString() !== user) {
+        return res.status(403).json({ message: "Not authorized to return this book" });
+    }
+
+    if (borrow.status === "Returned" || borrow.status === "Overdue") {
+      return res.status(400).json({ message: "Book already returned" });
+    }
+
+    borrow.returnDate = new Date();
+
+    borrow.status = borrow.returnDate > borrow.dueDate ? "Overdue" : "Returned";
+
+    await Book.findByIdAndUpdate(borrow.book._id, { $inc: { available: 1 } });
+
+    await borrow.save();
+
+    res.json({ message: "Book returned successfully", borrow });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Get all pending borrow requests for admin view
+const getPendingBorrows = async (req, res) => {
+  try {
+    const pendingBorrows = await Borrow.find({ status: "Pending" })
+      .populate("book", "title author image available") // ✅ Updated to include image and availability
+      .populate("student", "fullName email");
+
+    res.json(pendingBorrows);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 
 module.exports = {
   borrowBook,
   returnBook,
+  approveBorrow,
+  rejectBorrow,
+  getPendingBorrows,
 };

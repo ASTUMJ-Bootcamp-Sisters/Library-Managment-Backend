@@ -6,7 +6,15 @@ exports.getAdminStats = async (req, res) => {
   try {
     const totalBooks = await Book.countDocuments();
     const totalUsers = await require("../models/User").countDocuments();
-    const borrowedCount = await Borrow.countDocuments({ returned: false });
+
+    // ✅ Corrected query to count documents with 'Borrowed' or 'Overdue' status
+    const borrowedCount = await Borrow.countDocuments({
+      $or: [
+        { status: "Borrowed" },
+        { status: "Overdue" }
+      ]
+    });
+
     res.json({
       totalBooks,
       totalUsers,
