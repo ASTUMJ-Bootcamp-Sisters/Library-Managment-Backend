@@ -1,9 +1,14 @@
 const mongoose = require("mongoose");
 
 const commentSchema = new mongoose.Schema({
-  user: {type: mongoose.Schema.Types.ObjectId, ref:"User", required:true},// who commented
-  text: {type:String,required:true},
+  user: {type: mongoose.Schema.Types.ObjectId, ref:"User", required: true },// who commented
+  text: {type:String, required:true },
   createdAt: { type: Date, default: Date.now}
+});
+
+const ratingsSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User"},
+  value: {type:Number, min:1, max:5 },
 });
 
 const bookSchema = new mongoose.Schema(
@@ -56,8 +61,14 @@ const bookSchema = new mongoose.Schema(
       trim: true,
     },
     comments:[commentSchema],
+    ratings: [ratingsSchema],
   },
   { timestamps: true }
 );
 
+bookSchema.virtual("averageRating").get(function (){
+  if (this.ratings.length === 0) return 0;
+  const total = this.ratings.reduce((sum, r) => sum +r.value, 0);
+  return (total / this.ratings.length).toFixed(1);
+});
 module.exports = mongoose.model("Book", bookSchema);
