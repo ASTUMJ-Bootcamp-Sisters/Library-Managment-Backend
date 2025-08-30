@@ -5,11 +5,8 @@ const commentSchema = new mongoose.Schema({
   text: { type:String, required:true },
   createdAt: { type: Date, default: Date.now}
 });
-
 const ratingsSchema = new mongoose.Schema({
-  // ✅ Fix: Add 'required: true' to ensure a user is always associated with a rating.
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  // ✅ Fix: Add 'required: true' to ensure the rating value is always provided.
   value: { type: Number, min: 1, max: 5, required: true },
 });
 
@@ -67,12 +64,14 @@ const bookSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+bookSchema.virtual("averageRating").get(function () {
+  const ratingsArray = this.ratings || [];
+  if (ratingsArray.length === 0) return 0;
 
-bookSchema.virtual("averageRating").get(function (){
-  if (this.ratings.length === 0) return 0;
-  const total = this.ratings.reduce((sum, r) => sum +r.value, 0);
-  return (total / this.ratings.length).toFixed(1);
+  const total = ratingsArray.reduce((sum, r) => sum + r.value, 0);
+  return (total / ratingsArray.length).toFixed(1);
 });
+
 
 // Ensures virtual fields are included in JSON output
 bookSchema.set('toJSON', { virtuals: true });

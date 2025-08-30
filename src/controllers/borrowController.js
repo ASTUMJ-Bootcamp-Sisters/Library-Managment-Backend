@@ -116,18 +116,22 @@ const returnBook = async (req, res) => {
   }
 };
 
+
 // Get all pending borrow requests for admin view
 const getPendingBorrows = async (req, res) => {
   try {
     const pendingBorrows = await Borrow.find({ status: "Pending" })
-      .populate("book", "title author image available") // ✅ Updated to include image and availability
+      .populate("book", "title author image available")
       .populate("student", "fullName email");
 
-    res.json(pendingBorrows);
+
+    res.json(Array.isArray(pendingBorrows) ? pendingBorrows : []);
   } catch (error) {
+    console.error("Error in getPendingBorrows:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 module.exports = {
   borrowBook,
