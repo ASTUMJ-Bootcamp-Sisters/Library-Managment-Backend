@@ -8,7 +8,7 @@ require("dotenv").config();
 const bookRoutes = require("./src/routes/bookRoutes");
 const borrowRoutes = require("./src/routes/borrowRoutes")
 const mongoose = require("mongoose");
-
+const paymentRoutes = require("./src/routes/paymentRoutes");
 
 const cors = require("cors");
 
@@ -33,6 +33,7 @@ connectDB();
 
 app.use("/api/auth", authRoutes);
 
+app.use("/api/payments", paymentRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/borrow", borrowRoutes);
 
