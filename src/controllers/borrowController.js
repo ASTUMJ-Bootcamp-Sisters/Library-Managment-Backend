@@ -132,6 +132,44 @@ const getPendingBorrows = async (req, res) => {
   }
 };
 
+// Get borrow history for a student (their own records)
+const getStudentBorrowHistory = async (req, res) => {
+  try {
+    const studentId = req.user.id; // Get student ID from authenticated user token
+    
+    const borrowHistory = await Borrow.find({ student: studentId })
+      .populate("book", "title author image")
+      .sort({ createdAt: -1 }); // Sort by most recent first
+    
+    res.json(borrowHistory);
+  } catch (error) {
+    console.error("Error in getStudentBorrowHistory:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Admin: Get borrow history for all users or for a specific user
+const getAdminBorrowHistory = async (req, res) => {
+  try {
+    const { studentId } = req.query; // Optional student ID filter
+    let query = {};
+    
+    // If studentId is provided, filter by that student
+    if (studentId) {
+      query.student = studentId;
+    }
+    
+    const borrowHistory = await Borrow.find(query)
+      .populate("book", "title author image")
+      .populate("student", "fullName email")
+      .sort({ createdAt: -1 }); // Sort by most recent first
+    
+    res.json(borrowHistory);
+  } catch (error) {
+    console.error("Error in getAdminBorrowHistory:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
 
 module.exports = {
   borrowBook,
@@ -139,4 +177,6 @@ module.exports = {
   approveBorrow,
   rejectBorrow,
   getPendingBorrows,
+  getStudentBorrowHistory,
+  getAdminBorrowHistory,
 };

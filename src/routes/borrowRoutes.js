@@ -5,7 +5,9 @@ const {
   returnBook,
   approveBorrow,
   rejectBorrow,
-  getPendingBorrows, // Import the new function
+  getPendingBorrows,
+  getStudentBorrowHistory,
+  getAdminBorrowHistory
 } = require("../controllers/borrowController");
 const { authenticate, authorizeRoles } = require("../middleware/auth");
 
@@ -36,6 +38,21 @@ router.get(
   authenticate,
   authorizeRoles("admin", "super-admin"),
   getPendingBorrows
+);
+
+
+router.get(
+  "/history",
+  authenticate,
+  getStudentBorrowHistory
+);
+
+
+router.get(
+  "/admin/history",
+  authenticate,
+  authorizeRoles("admin", "super-admin"),
+  getAdminBorrowHistory
 );
 
 module.exports = router;
