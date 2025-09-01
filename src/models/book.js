@@ -77,4 +77,4 @@ bookSchema.virtual("averageRating").get(function () {
 bookSchema.set('toJSON', { virtuals: true });
 bookSchema.set('toObject', { virtuals: true });
 
-module.exports = mongoose.model("Book", bookSchema);
+module.exports = mongoose.models.Book || mongoose.model("Book", bookSchema);

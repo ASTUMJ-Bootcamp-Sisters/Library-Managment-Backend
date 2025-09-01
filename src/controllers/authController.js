@@ -1,6 +1,8 @@
-// ADMIN DASHBOARD STATS
-const Book = require("../models/Book");
+const User = require("../models/User");
+const Book = require("../models/book");
 const Borrow = require("../models/Borrow");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 
 exports.getAdminStats = async (req, res) => {
   try {
@@ -24,15 +26,9 @@ exports.getAdminStats = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch stats", error: err.message });
   }
 };
-const User = require("../models/User");
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
-
-
 exports.register = async (req, res) => {
   try {
     const { fullName, email, password, role } = req.body;
-
     if (!fullName || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -50,7 +46,9 @@ exports.register = async (req, res) => {
       role: role || "user",
     });
 
+    // Use the generateTokens method from the User model to include role in the token
     const { accessToken, refreshToken } = user.generateTokens();
+    
     user.refreshToken = refreshToken;
     await user.save();
 
@@ -73,36 +71,28 @@ exports.register = async (req, res) => {
 };
 
 
-
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user
     const user = await User.findOne({ email }).select("+password");
+    if (!user) return res.status(400).json({ message: "Email not registered" });
 
-  
-    if (!user) {
-      console.log(`Login attempt failed: email not registered - ${email}`);
-      return res.status(400).json({ message: "Email not registered" });
-    }
-
-    // Check if user is blacklisted
     if (user.isBlacklisted) {
       return res
         .status(403)
         .json({ message: "This account has been blacklisted" });
     }
 
-    // Compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      console.log(`Login attempt failed: incorrect password for ${email}`);
+    if (!isMatch)
       return res.status(400).json({ message: "Incorrect password" });
-    }
+  
+    user.lastLogin = new Date();
 
-    // Generate tokens
+    // Use the generateTokens method from the User model to include role in the token
     const { accessToken, refreshToken } = user.generateTokens();
+    
     user.refreshToken = refreshToken;
     await user.save();
 
@@ -123,7 +113,6 @@ exports.login = async (req, res) => {
 };
 
 
-// REFRESH TOKEN
 exports.refresh = async (req, res) => {
   try {
     const { refreshToken } = req.body;
@@ -141,8 +130,9 @@ exports.refresh = async (req, res) => {
         if (!user || user.refreshToken !== refreshToken)
           return res.status(403).json({ message: "Refresh token not valid" });
 
-        const { accessToken, refreshToken: newRefreshToken } =
-          user.generateTokens();
+        // Use the generateTokens method from the User model to include role in the token
+        const { accessToken, refreshToken: newRefreshToken } = user.generateTokens();
+
         user.refreshToken = newRefreshToken;
         await user.save();
 
@@ -171,7 +161,6 @@ exports.logout = async (req, res) => {
   }
 };
 
-// PROFILE
 exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
@@ -184,7 +173,69 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// GET ALL USERS (Admin)
+exports.updateProfile = async (req, res) => {
+  try {
+    const { fullName, phone ,username,bio } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (fullName) user.fullName = fullName;
+    if (username) user.username = username;
+     if (bio) user.bio = bio;
+    if (phone) user.phone = phone;
+    if (req.file) user.profilePic = req.file.path;
+
+    await user.save();
+
+    res.json({
+      message: "Profile updated successfully",
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        username:user.username,
+        bio:user.bio,
+        profilePic: user.profilePic,
+        role: user.role,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin,
+      },
+    });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Failed to update profile", error: err.message });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword)
+      return res
+        .status(400)
+        .json({ message: "Old and new password are required" });
+
+    const user = await User.findById(req.user.id).select("+password");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch)
+      return res.status(400).json({ message: "Old password is incorrect" });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.json({ message: "Password changed successfully" });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Failed to change password", error: err.message });
+  }
+};
+
+
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select("-password");
@@ -196,7 +247,7 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// UPDATE USER ROLE (Admin)
+
 exports.updateUserRole = async (req, res) => {
   try {
     const { role } = req.body;
@@ -214,6 +265,7 @@ exports.updateUserRole = async (req, res) => {
   }
 };
 
+
 // BLACKLIST/UNBLACKLIST USER (Admin)
 exports.blacklistUser = async (req, res) => {
   try {
@@ -223,22 +275,28 @@ exports.blacklistUser = async (req, res) => {
     } else {
       // If not provided, toggle the current value
       const user = await User.findById(req.params.id);
-      if (!user) return res.status(404).json({ message: "User not found" });
+      if (!user) return res.status(404).json({ message: "User not found", success: false });
       isBlacklisted = !user.isBlacklisted;
     }
+    
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { isBlacklisted },
       { new: true }
     ).select("-password");
-    if (!user) return res.status(404).json({ message: "User not found" });
+    
+    if (!user) return res.status(404).json({ message: "User not found", success: false });
+    
     res.json({
       message: isBlacklisted ? "User has been blacklisted" : "User has been unblacklisted",
-      user
+      user,
+      success: true
     });
   } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Failed to update blacklist status", error: err.message });
+    res.status(500).json({ 
+      message: "Failed to update blacklist status", 
+      error: err.message,
+      success: false
+    });
   }
 };
