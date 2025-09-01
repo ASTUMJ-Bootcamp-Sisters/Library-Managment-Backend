@@ -1,17 +1,33 @@
 const { Router } = require("express");
 const authController = require("../controllers/authController");
 const { authenticate, authorizeRoles } = require("../middleware/auth");
+const multer = require("multer");
 
 const router = Router();
 
-// Public routes
+
+
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, "uploads/"), // folder to store images
+  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
+});
+const upload = multer({ storage });
+
+
 router.post("/register", authController.register);
 router.post("/login", authController.login);
 router.post("/refresh", authController.refresh);
 
-// Protected routes
 router.post("/logout", authenticate, authController.logout);
 router.get("/profile", authenticate, authController.getProfile);
+
+
+router.put("/profile", authenticate, upload.single("profilePic"), authController.updateProfile);
+
+
+router.put("/profile/change-password", authenticate, authController.changePassword);
+
 
 router.get(
   "/users",
@@ -19,6 +35,7 @@ router.get(
   authorizeRoles("admin", "super-admin"),
   authController.getAllUsers
 );
+
 router.put(
   "/users/:id/role",
   authenticate,

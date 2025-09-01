@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const userSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true },
+    username: { type: String, unique: true },
     email: {
       type: String,
       required: true,
@@ -12,6 +13,10 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+    phone: { type: String },
+    profilePic: { type: String },
+    lastLogin: { type: Date },
+    bio:{type:String},
     password: { type: String, required: true, minlength: 8, select: false },
     role: {
       type: String,
@@ -23,7 +28,6 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
 
 
 userSchema.methods.generateTokens = function () {
