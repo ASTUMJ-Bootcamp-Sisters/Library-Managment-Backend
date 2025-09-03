@@ -10,9 +10,16 @@ const {
   getAdminBorrowHistory
 } = require("../controllers/borrowController");
 const { authenticate, authorizeRoles } = require("../middleware/auth");
+const multer = require("multer");
+
+// Upload setup
+const upload = multer({ dest: "uploads/" });
 
 // Route for users to request to borrow a book
-router.post("/", authenticate, borrowBook);
+router.post("/", authenticate, upload.fields([
+  { name: 'idCardImage', maxCount: 1 },
+  { name: 'paymentImage', maxCount: 1 }
+]), borrowBook);
 
 // Route for users to return a book (borrowId in req.body)
 router.post("/return", authenticate, returnBook);

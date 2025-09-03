@@ -24,7 +24,10 @@ const userSchema = new mongoose.Schema(
       default: "user",
     },
     refreshToken: { type: String },
-    isBlacklisted: { type: Boolean, default: false },
+  isBlacklisted: { type: Boolean, default: false },
+  emailVerified: { type: Boolean, default: false },
+  emailOtp: { type: String },
+  emailOtpExpiry: { type: Date },
   },
   { timestamps: true }
 );

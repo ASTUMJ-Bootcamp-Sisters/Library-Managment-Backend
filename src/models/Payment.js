@@ -7,7 +7,9 @@ const paymentSchema = new mongoose.Schema(
   borrow: { type: mongoose.Schema.Types.ObjectId, ref: "Borrow" },
   amount: { type: Number },
   method: { type: String, enum: ["cash", "card", "online"] },
-    description: { type: String },
+  description: { type: String },
+  screenshot: { type: String },
+  status: { type: String, enum: ["Pending", "Approved", "Rejected"], default: "Pending" },
   },
   { timestamps: true }
 );
