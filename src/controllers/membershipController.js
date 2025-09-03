@@ -110,7 +110,7 @@ const sendMembershipRequestConfirmation = async (email, userName) => {
         <li style="margin-bottom: 10px;">Our admin team will review your application, including your ID card and payment information</li>
         <li style="margin-bottom: 10px;">You will receive an email notification when your request is approved or rejected</li>
       </ol>
-      <p>If you have any questions, please contact our support team at <a href="mailto:support@astumsj.library.com">support@astumsj.library.com</a></p>
+      <p>If you have any questions, please contact our support team at <a href="mailto:support@astumsj.library.com">fafifeti@astumsj.library.com</a></p>
       <p>Thank you for choosing ASTUMSJ Library!</p>
       <div style="text-align: center; margin-top: 20px; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
         <p style="margin: 0; color: #666;">ASTUMSJ Library Management System</p>
@@ -138,8 +138,8 @@ const sendMembershipApprovalEmail = async (email, userName, expiryDate) => {
       
       <h2 style="color: #A0522D;">Your Membership Benefits:</h2>
       <ul style="list-style-type: none; padding-left: 0;">
-        <li style="margin-bottom: 10px; padding-left: 20px;">✓ Borrow up to 5 books at a time</li>
-        <li style="margin-bottom: 10px; padding-left: 20px;">✓ Extended borrowing duration (21 days)</li>
+
+
         <li style="margin-bottom: 10px; padding-left: 20px;">✓ Access to members-only events and workshops</li>
         <li style="margin-bottom: 10px; padding-left: 20px;">✓ Access to exclusive digital resources</li>
         <li style="margin-bottom: 10px; padding-left: 20px;">✓ No late fees for the first 3 days</li>
@@ -150,7 +150,7 @@ const sendMembershipApprovalEmail = async (email, userName, expiryDate) => {
       </div>
       
       <p>You can now enjoy all the benefits of being a member. To start borrowing books, simply visit our library or log in to our online portal.</p>
-      <p>If you have any questions about your membership or need assistance, please don't hesitate to contact us at <a href="mailto:support@astumsj.library.com">support@astumsj.library.com</a></p>
+      <p>If you have any questions about your membership or need assistance, please don't hesitate to contact us at <a href="mailto:support@astumsj.library.com">fafifeti@astumsj.library.com</a></p>
       <p>Happy reading!</p>
       
       <div style="text-align: center; margin-top: 20px; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
