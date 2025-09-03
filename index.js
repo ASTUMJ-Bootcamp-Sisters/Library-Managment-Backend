@@ -32,6 +32,10 @@ app.use(express.json());
 // mongo connected
 connectDB();
 
+
+// Serve uploads folder as static files
+app.use('/uploads', express.static('uploads'));
+
 app.use("/api/auth", authRoutes);
 
 app.use("/api/payments", paymentRoutes);

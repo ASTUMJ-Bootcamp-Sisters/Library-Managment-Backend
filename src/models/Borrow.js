@@ -20,7 +20,7 @@ const borrowSchema = new mongoose.Schema(
     note: { type: String },
     status: {
       type: String,
-      enum: ["Pending", "Borrowed", "Returned", "Overdue"],
+      enum: ["Pending", "Borrowed", "Returned", "Overdue", "Rejected"],
       default: "Pending"
     }
   },
