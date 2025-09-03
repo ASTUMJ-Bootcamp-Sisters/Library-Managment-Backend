@@ -4,7 +4,15 @@ const Book = require("../models/book");
 // Get all books
 async function getBooks(req, res) {
   try {
-    const books = await Book.find();
+    const books = await Book.find()
+      .populate({
+        path: "comments.user",
+        select: " fullName email"
+      })
+      .populate({
+        path: "ratings.user",
+        select: " fullName email"
+      });
     res.json({ 
       success: true,
       data: books 
@@ -30,8 +38,14 @@ async function getBookById(req, res) {
     }
 
     const book = await Book.findById(req.params.id)
-      .populate("comments.user", "fullName")
-      .populate("ratings.user", "fullName");
+      .populate({
+        path: "comments.user",
+        select: "fullName email"
+      })
+      .populate({
+        path: "ratings.user",
+        select: "fullName email"
+      });
 
     if (!book) {
       return res.status(404).json({ 
@@ -280,6 +294,66 @@ async function addComment(req, res) {
   }
 }
 
+// Edit comment
+async function editComment(req,res) {
+  try {
+    const {commentId, text } = req.body;
+    const userId = req.user.id;
+
+    if (!commentId || !text) {
+      return res.status(400).json({ success: false, message: "Comment ID and text are required"});
+    }
+
+    const book = await Book.findOne({"comments._id": commentId});
+    if (!book) return res.status(404).json({ success: false, message: "Comment not found"});
+
+    const comment = book.comments.id(commentId);
+    if (comment.user.toString() !== userId) {
+      return res.status(403).json({ success: false, message: "Not authorized to edit this comment"});
+    }
+
+    comment.text = text;
+    await book.save();
+
+    const populatedBook = await Book.findById(book._id).populate("comments.user", "fullName");
+    res.json({ success: true, message:"Comment updated", data: populatedBook});
+  } catch (err) {
+    res.status(500).json({ success:false, message: "Failed to edit comment", error: err.message});
+  }
+}
+
+// Delete comment
+async function deleteComment(req, res) {
+  try {
+    const { commentId } = req.body;
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    if (!commentId) return res.status(400).json({ success: false, message: "Comment Id is required" });
+
+    const book = await Book.findOne({ "comments._id": commentId });
+    if (!book) return res.status(404).json({ success: false, message: "Comment not found" });
+
+    const comment = book.comments.id(commentId);
+
+    // Only author or admin can delete
+    if (comment.user.toString() !== userId && userRole !== "admin") {
+      return res.status(403).json({ success: false, message: "Not authorized to delete this comment" });
+    }
+
+    // Remove comment safely
+    book.comments = book.comments.filter(c => c._id.toString() !== commentId);
+    await book.save();
+
+    const populatedBook = await Book.findById(book._id).populate("comments.user", "fullName email");
+    res.json({ success: true, message: "Comment deleted", data: populatedBook });
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to delete comment", error: err.message });
+  }
+}
+
+
 module.exports = {
   getBooks,
   getBookById,
@@ -288,4 +362,6 @@ module.exports = {
   deleteBook,
   rateBook,
   addComment,
+  editComment,
+  deleteComment,
 };
