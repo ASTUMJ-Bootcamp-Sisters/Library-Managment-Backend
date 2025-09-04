@@ -1,4 +1,4 @@
-// middleware/checkMembership.js
+
 const Payment = require("../models/Payment");
 
 async function checkMembership(req, res, next) {
