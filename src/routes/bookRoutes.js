@@ -9,11 +9,16 @@ const {
   addComment,
   editComment,
   deleteComment,
+  getRecentBooks,
+  getRecomendedBooks,
 } = require("../controllers/bookController");
 const { authenticate, authorizeRoles } = require("../middleware/auth");
 const router = express.Router();
 
 // Routes
+router.get("/recent", getRecentBooks);
+router.get("/recommended", getRecomendedBooks);
+
 router.get("/", getBooks);
 router.get("/:id", getBookById);
 router.post("/", authenticate, authorizeRoles("admin", "super-admin"), addBook);
