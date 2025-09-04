@@ -170,6 +170,60 @@ async function deleteBook(req, res) {
   }
 }
 
+// Recently books
+async function getRecentBooks(req, res) {
+  try {
+    const books = await Book.find()
+      .sort({ createdAt: -1 })
+      .limit(15)
+      .populate({
+        path: "comments.user",
+        select: "fullName email"
+      })
+      .populate({
+        path: "ratings.user",
+        select: "fullName email"
+      });
+    res.json({
+      success: true,
+      data: books
+    });
+  } catch (err) {
+    console.error("Error getting recent books:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve recent books",
+      error: err.message
+    });
+  }
+}
+
+// Recomended books
+async function getRecomendedBooks(req, res) {
+  try {
+    const books = await Book.aggregate([
+      {
+        $addFields: {
+          averageRating: { $avg: "$ratings.value" }
+        }
+      },
+      { $sort: { averageRating: -1}},
+      {$limit:15}
+    ]);
+    res.json({
+      success: true,
+      data: books
+    });
+  } catch (err) {
+    console.err("Error getting recommended books:", err)
+    res.status(500).json({
+      success: false,
+      message: "Failed to relative recommended books",
+      error: err.message
+    });
+  }
+}
+
 // Rate a book
 async function rateBook(req, res) {
   try {
@@ -364,4 +418,6 @@ module.exports = {
   addComment,
   editComment,
   deleteComment,
+  getRecentBooks,
+  getRecomendedBooks,
 };
