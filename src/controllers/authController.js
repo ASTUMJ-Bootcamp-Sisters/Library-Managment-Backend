@@ -3,6 +3,7 @@ const Book = require("../models/book");
 const Borrow = require("../models/Borrow");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
 exports.getAdminStats = async (req, res) => {
   try {
@@ -298,5 +299,92 @@ exports.blacklistUser = async (req, res) => {
       error: err.message,
       success: false
     });
+  }
+};
+
+function generateOtp() {
+  return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+}
+
+function hmacOtp(otp) {
+  return crypto.createHmac("sha256", process.env.HMAC_VERIFICATION_CODE_SECRET).update(otp).digest("hex");
+}
+
+exports.requestEmailOtp = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (user.emailVerified) return res.status(400).json({ message: "Email already verified" });
+
+    const otp = generateOtp();
+    const otpHash = hmacOtp(otp);
+    const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min expiry
+    user.emailOtp = otpHash;
+    user.emailOtpExpiry = expiry;
+    await user.save();
+
+    // Use the centralized email service
+    const { sendEmail } = require('../utils/emailService');
+    
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
+        <h1 style="color: #8B4513; text-align: center;">Email Verification for ASTUMSJ Library</h1>
+        <p>Dear ${user.fullName},</p>
+        <p>Thank you for verifying your email address with ASTUMSJ Library.</p>
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: center;">
+          <h2 style="margin: 0; color: #8B4513;">Your OTP Code</h2>
+          <p style="font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 10px 0;">${otp}</p>
+          <p>This code will expire in 10 minutes</p>
+        </div>
+        <p>If you did not request this code, please ignore this email or contact support.</p>
+        <div style="text-align: center; margin-top: 20px; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
+          <p style="margin: 0; color: #666;">ASTUMSJ Library Management System</p>
+        </div>
+      </div>
+    `;
+
+    const emailSent = await sendEmail(
+      user.email,
+      "Your ASTUMSJ Library Email Verification OTP", 
+      html
+    );
+
+    res.json({ 
+      message: "OTP sent to your email", 
+      success: true,
+      emailSent 
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to send OTP", error: err.message });
+  }
+};
+
+exports.verifyEmailOtp = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { otp } = req.body;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user.emailOtp || !user.emailOtpExpiry) return res.status(400).json({ message: "No OTP requested" });
+    if (new Date() > user.emailOtpExpiry) return res.status(400).json({ message: "OTP expired" });
+    if (user.emailOtp !== hmacOtp(otp)) return res.status(400).json({ message: "Invalid OTP" });
+
+    user.emailVerified = true;
+    user.emailOtp = undefined;
+    user.emailOtpExpiry = undefined;
+    await user.save();
+
+    // Sync membership's isEmailVerified field if membership exists
+    const Membership = require("../models/Membership");
+    const membership = await Membership.findOne({ user: user._id });
+    if (membership) {
+      membership.isEmailVerified = true;
+      await membership.save();
+    }
+
+    res.json({ message: "Email verified successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to verify OTP", error: err.message });
   }
 };

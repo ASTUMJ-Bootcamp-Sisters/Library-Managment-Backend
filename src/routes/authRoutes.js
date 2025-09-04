@@ -56,5 +56,23 @@ router.put(
   authorizeRoles("admin", "super-admin"),
   authController.blacklistUser
 );
-
+router.post("/request-email-otp", authenticate, authController.requestEmailOtp);
+router.post("/verify-email-otp", authenticate, authController.verifyEmailOtp);
+router.delete(
+  "/users/:id",
+  authenticate,
+  authorizeRoles("admin", "super-admin"),
+  async (req, res) => {
+    const User = require("../models/User");
+    try {
+      const user = await User.findByIdAndDelete(req.params.id);
+      if (!user) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+      res.json({ success: true, message: "User deleted successfully" });
+    } catch (err) {
+      res.status(500).json({ success: false, message: "Failed to delete user", error: err.message });
+    }
+  }
+);
 module.exports = router;

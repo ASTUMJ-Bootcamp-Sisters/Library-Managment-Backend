@@ -9,6 +9,7 @@ const bookRoutes = require("./src/routes/bookRoutes");
 const borrowRoutes = require("./src/routes/borrowRoutes")
 const mongoose = require("mongoose");
 const paymentRoutes = require("./src/routes/paymentRoutes");
+const membershipRoutes = require("./src/routes/membershipRoutes");
 
 const cors = require("cors");
 
@@ -31,11 +32,16 @@ app.use(express.json());
 // mongo connected
 connectDB();
 
+
+// Serve uploads folder as static files
+app.use('/uploads', express.static('uploads'));
+
 app.use("/api/auth", authRoutes);
 
 app.use("/api/payments", paymentRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/borrow", borrowRoutes);
+app.use("/api/membership", membershipRoutes);
 
 
 

@@ -1,11 +1,43 @@
 const Book = require("../models/book");
 const Borrow = require("../models/Borrow");
+const Membership = require("../models/Membership");
+const multer = require('multer');
+const nodemailer = require("nodemailer");
+
+// Helper function to send email notifications
+const sendEmailNotification = async (email, subject, htmlContent) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.NODE_CODE_SENDING_EMAIL_ADDRESS,
+        pass: process.env.NODE_CODE_SENDING_EMAIL_PASSWORD,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.NODE_CODE_SENDING_EMAIL_ADDRESS,
+      to: email,
+      subject,
+      html: htmlContent,
+    };
+
+    await transporter.sendMail(mailOptions);
+    return true;
+  } catch (error) {
+    console.error("Error sending email notification:", error);
+    return false;
+  }
+};
 
 // Borrow a book (creates a pending request)
 const borrowBook = async (req, res) => {
   try {
     const { bookId, duration } = req.body;
     const user = req.user.id;
+    const files = req.files || {};
+    const idCardImage = files.idCardImage ? files.idCardImage[0].path : null;
+    const paymentImage = files.paymentImage ? files.paymentImage[0].path : null;
 
     // Validate input
     if (!bookId) {
@@ -32,6 +64,10 @@ const borrowBook = async (req, res) => {
         message: "Invalid duration format. Must be '1w' or '2w'" 
       });
     }
+    
+    // Check membership status
+    const membership = await Membership.findOne({ user });
+    const isMember = membership && membership.status === "Active" && new Date() < membership.expiryDate;
 
     // Check if book exists
     const foundBook = await Book.findById(bookId);
@@ -69,20 +105,53 @@ const borrowBook = async (req, res) => {
         message: "You cannot borrow more than 3 books at the same time. Please return a book before borrowing another."
       });
     }
+    
+    // Non-member validation
+    if (!isMember) {
+      // If not a member, ID card and payment uploads are required
+      if (!idCardImage) {
+        return res.status(400).json({
+          success: false,
+          message: "As a non-member, you need to upload an ID card image"
+        });
+      }
+      
+      if (!paymentImage) {
+        return res.status(400).json({
+          success: false,
+          message: "As a non-member, you need to upload a payment screenshot"
+        });
+      }
+    }
 
+    // For members, we can auto-approve. For non-members, it stays as "Pending"
     const newBorrow = new Borrow({
       student: user,
       book: bookId,
       dueDate,
-      status: "Pending", // Default status is now Pending
+      status: isMember ? "Borrowed" : "Pending", // Auto-approve for members
+      idCardImage: !isMember ? idCardImage : undefined,
+      paymentImage: !isMember ? paymentImage : undefined,
+      note: req.body.note
     });
     const savedBorrow = await newBorrow.save();
 
-    res.status(202).json({
-      success: true,
-      message: "Book borrowing request sent to admin for approval",
-      data: savedBorrow,
-    });
+    // Update response message based on membership status
+    if (isMember) {
+      res.status(200).json({
+        success: true,
+        message: "Book borrowed successfully",
+        data: savedBorrow,
+        isMember: true
+      });
+    } else {
+      res.status(202).json({
+        success: true,
+        message: "Book borrowing request sent to admin for approval",
+        data: savedBorrow,
+        isMember: false
+      });
+    }
   } catch (error) {
     console.error("Error in borrowBook:", error);
     res.status(500).json({ 
@@ -138,6 +207,32 @@ const approveBorrow = async (req, res) => {
     });
     
     await borrow.save();
+
+    // Send email notification to user about approved borrow request
+    if (borrow.student && borrow.student.email) {
+      const emailContent = `
+        <h2>Book Borrowing Approved</h2>
+        <p>Dear ${borrow.student.fullName},</p>
+        <p>Your request to borrow <strong>${borrow.book.title}</strong> has been approved.</p>
+        <p>Book Details:</p>
+        <ul>
+          <li>Book: ${borrow.book.title}</li>
+          <li>Author: ${borrow.book.author}</li>
+          <li>Borrow Date: ${new Date().toDateString()}</li>
+          <li>Due Date: ${new Date(borrow.dueDate).toDateString()}</li>
+        </ul>
+        <p>Please take care of the book and return it on time to avoid late fees.</p>
+        <p>Thank you for using ASTUMSJ Library!</p>
+      `;
+      
+      const emailSent = await sendEmailNotification(
+        borrow.student.email,
+        "Book Borrowing Request Approved - ASTUMSJ Library",
+        emailContent
+      );
+      
+      console.log("Email notification sent:", emailSent);
+    }
 
     res.json({
       success: true,

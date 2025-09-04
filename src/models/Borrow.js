@@ -15,9 +15,12 @@ const borrowSchema = new mongoose.Schema(
     borrowDate: { type: Date, default: Date.now },
     returnDate: { type: Date },
     dueDate: { type: Date },
+    idCardImage: { type: String },
+    paymentImage: { type: String },
+    note: { type: String },
     status: {
       type: String,
-      enum: ["Pending", "Borrowed", "Returned", "Overdue"],
+      enum: ["Pending", "Borrowed", "Returned", "Overdue", "Rejected"],
       default: "Pending"
     }
   },
