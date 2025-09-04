@@ -1,39 +1,43 @@
-// controllers/borrowController.js
 const Book = require("../models/Book");
 const Borrow = require("../models/Borrow");
+const Settings = require("../models/Settings");
 
 // Borrow a book
 async function borrowBook(req, res) {
   try {
-    const { bookId, duration } = req.body; // duration instead of dueDate
-    const studentId = req.user.id; // assume user is authenticated
+    const { bookId } = req.body;
+    const studentId = req.user.id;
 
-    // 1. Find the book
     const book = await Book.findById(bookId);
     if (!book) return res.status(404).json({ error: "Book not found" });
 
-    // 2. Check availability
-    if (book.available <= 0) {
-      return res.status(400).json({ error: "No available copies" });
+    const settings = await Settings.findOne();
+
+    // Check pay-per-borrow
+    if (!settings.payPerBorrowEnabled && req.user.role === "user") {
+      return res.status(403).json({ error: "Pay-per-borrow is disabled" });
     }
 
-    // 3. Calculate dueDate based on duration
-    const dueDate = new Date();
-    if (duration === "1w") dueDate.setDate(dueDate.getDate() + 7);
-    else if (duration === "1m") dueDate.setMonth(dueDate.getMonth() + 1);
-    else if (duration === "2m") dueDate.setMonth(dueDate.getMonth() + 2);
-    else if (duration === "6m") dueDate.setMonth(dueDate.getMonth() + 6);
-    else return res.status(400).json({ error: "Invalid duration option" });
-
-    // 4. Create borrow record
-    const borrow = new Borrow({
+    // Check max borrow limit
+    const activeBorrows = await Borrow.countDocuments({
       student: studentId,
-      book: bookId,
-      dueDate,
+      status: "Borrowed",
     });
+    if (activeBorrows >= settings.maxBorrowLimit) {
+      return res
+        .status(400)
+        .json({
+          error: `You can borrow up to ${settings.maxBorrowLimit} books.`,
+        });
+    }
+
+    // Calculate due date based on settings.borrowDurationDays
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + settings.borrowDurationDays);
+
+    const borrow = new Borrow({ student: studentId, book: bookId, dueDate });
     await borrow.save();
 
-    // 5. Decrease available count
     book.available -= 1;
     await book.save();
 
@@ -43,27 +47,33 @@ async function borrowBook(req, res) {
   }
 }
 
-
+// Return a book
 async function returnBook(req, res) {
   try {
     const { borrowId } = req.body;
-    const studentId = req.user.id; // assume user is authenticated
+    const studentId = req.user.id;
 
-    // 1. Find the borrow record
     const borrow = await Borrow.findOne({ _id: borrowId, student: studentId });
-    if (!borrow) return res.status(404).json({ error: "Borrow record not found" });
+    if (!borrow)
+      return res.status(404).json({ error: "Borrow record not found" });
 
-    // 2. Check if already returned
-    if (borrow.status === "Returned") {
+    if (borrow.status === "Returned")
       return res.status(400).json({ error: "Book already returned" });
-    }
 
-    // 3. Update borrow record
     borrow.returnDate = new Date();
     borrow.status = "Returned";
+
+    const settings = await Settings.findOne();
+
+    // Calculate late fees
+    if (borrow.returnDate > borrow.dueDate && settings.lateFeePerDay > 0) {
+      const diffTime = borrow.returnDate - borrow.dueDate;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      borrow.fine = diffDays * settings.lateFeePerDay;
+    }
+
     await borrow.save();
 
-    // 4. Increase book availability
     const book = await Book.findById(borrow.book);
     if (book) {
       book.available += 1;
@@ -76,7 +86,4 @@ async function returnBook(req, res) {
   }
 }
 
-module.exports = {
-  borrowBook,
-  returnBook,
-};
+module.exports = { borrowBook, returnBook };
