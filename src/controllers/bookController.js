@@ -1,3 +1,5 @@
+
+const mongoose = require("mongoose");
 const Book = require("../models/book");
 
 
@@ -80,9 +82,10 @@ async function addBook(req, res) {
       });
     }
 
-    const book = new Book(req.body);
+    // Always start with empty comments and ratings arrays
+    const bookData = { ...req.body, comments: [], ratings: [] };
+    const book = new Book(bookData);
     await book.save();
-    
     res.status(201).json({
       success: true,
       message: "Book added successfully",
@@ -228,7 +231,14 @@ async function getRecomendedBooks(req, res) {
 async function rateBook(req, res) {
   try {
     const { bookId, value } = req.body;
-    const userId = req.user.id;
+    const userId = req.user && req.user.id;
+    console.log('rateBook userId:', userId);
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required"
+      });
+    }
 
     // Input validation
     if (!bookId) {
@@ -262,14 +272,14 @@ async function rateBook(req, res) {
     }
 
     // Update or create rating
-    const existing = book.ratings.find(
-      (r) => r.user.toString() === userId
-    );
+    const existing = Array.isArray(book.ratings) ? book.ratings.find(
+      (r) => r.user && r.user.toString() === userId
+    ) : null;
 
     if (existing) {
       existing.value = value;
     } else {
-      book.ratings.push({ user: userId, value });
+      book.ratings.push({ user: new mongoose.Types.ObjectId(userId), value });
     }
 
     await book.save();
@@ -301,7 +311,14 @@ async function rateBook(req, res) {
 async function addComment(req, res) {
   try {
     const { bookId, text } = req.body;
-    const userId = req.user.id;
+    const userId = req.user && req.user.id;
+    console.log('addComment userId:', userId);
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required"
+      });
+    }
 
     // Input validation
     if (!bookId) {
@@ -326,7 +343,7 @@ async function addComment(req, res) {
       });
     }
 
-    book.comments.push({ user: userId, text: text.trim() });
+    book.comments.push({ user: new mongoose.Types.ObjectId(userId), text: text.trim() });
     await book.save();
 
     const populatedBook = await Book.findById(bookId)

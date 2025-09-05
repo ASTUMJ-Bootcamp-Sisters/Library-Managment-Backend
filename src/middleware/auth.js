@@ -15,7 +15,7 @@ exports.authenticate = async (req, res, next) => {
     if (user.isBlacklisted)
       return res.status(403).json({ message: "User is blacklisted" });
 
-    req.user = decoded;
+  req.user = { id: user._id.toString(), role: user.role };
     next();
   } catch (err) {
     res.status(401).json({ message: "Invalid or expired token" });
