@@ -15,6 +15,8 @@ const authRoutes = require("./src/routes/authRoutes");
 const bookRoutes = require("./src/routes/bookRoutes");
 const borrowRoutes = require("./src/routes/borrowRoutes");
 const settingsRoutes = require("./src/routes/settingsRoutes");
+const favoriteRoutes = require("./src/routes/favoriteRoutes");
+const feedbackRoutes = require("./src/routes/feedbackRoutes");
 
 const app = express();
 const bookReviewRoutes = require("./routes/bookReviewRoutes");
@@ -39,6 +41,7 @@ app.use('/uploads', express.static('uploads'));
 
 app.use("/api/auth", authRoutes);
 
+app.use("/api/favorites", favoriteRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/borrow", borrowRoutes);
@@ -48,6 +51,8 @@ app.use("/api/book-reviews", bookReviewRoutes);
 app.use("/api/favorites", favoriteRoutes);
 
 
+
+app.use("/api/feedback", feedbackRoutes);
 
 // Start server
 const PORT = process.env.PORT || 5000;
