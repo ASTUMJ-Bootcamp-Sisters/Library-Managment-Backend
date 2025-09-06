@@ -41,3 +41,18 @@ exports.getFavorites = async (req, res) => {
     res.status(500).json({ message: "Error fetching favorites", error: err.message });
   }
 };
+
+// Get a single favorite by its ID
+exports.getFavoriteById = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { favoriteId } = req.params;
+    const favorite = await Favorite.findOne({ _id: favoriteId, user: userId }).populate("book");
+    if (!favorite) {
+      return res.status(404).json({ message: "Favorite not found" });
+    }
+    res.json(favorite);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching favorite", error: err.message });
+  }
+};
