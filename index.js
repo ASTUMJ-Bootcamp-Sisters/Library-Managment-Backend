@@ -19,7 +19,8 @@ const favoriteRoutes = require("./src/routes/favoriteRoutes");
 const feedbackRoutes = require("./src/routes/feedbackRoutes");
 
 const app = express();
-
+const bookReviewRoutes = require("./routes/bookReviewRoutes");
+const favoriteRoutes = require("./routes/favoriteRoutes");
 // ✅ Enable CORS for your frontend
 app.use(
   cors({
@@ -46,6 +47,8 @@ app.use("/api/books", bookRoutes);
 app.use("/api/borrow", borrowRoutes);
 app.use("/api/membership", membershipRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/book-reviews", bookReviewRoutes);
+app.use("/api/favorites", favoriteRoutes);
 
 
 
