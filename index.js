@@ -17,10 +17,10 @@ const borrowRoutes = require("./src/routes/borrowRoutes");
 const settingsRoutes = require("./src/routes/settingsRoutes");
 const favoriteRoutes = require("./src/routes/favoriteRoutes");
 const feedbackRoutes = require("./src/routes/feedbackRoutes");
-
+const bookReviewRoutes = require("./src/routes/bookReviewRoutes");
 const app = express();
-const bookReviewRoutes = require("./routes/bookReviewRoutes");
-const favoriteRoutes = require("./routes/favoriteRoutes");
+
+
 // ✅ Enable CORS for your frontend
 app.use(
   cors({

@@ -7,7 +7,7 @@ exports.submitFeedback = async (req, res) => {
       return res.status(400).json({ message: "Feedback message is required." });
     }
     const feedback = await Feedback.create({
-      user: req.user.id,
+      user: req.user ? req.user.id : null,
       message,
     });
     res.status(201).json({ message: "Feedback submitted.", feedback });

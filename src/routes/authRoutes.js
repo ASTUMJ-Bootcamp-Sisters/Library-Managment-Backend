@@ -75,4 +75,10 @@ router.delete(
     }
   }
 );
+router.get(
+  "/users/:id",
+  authenticate,
+  authorizeRoles("admin", "super-admin"),
+  authController.getUserById
+);
 module.exports = router;

@@ -7,24 +7,36 @@ const crypto = require("crypto");
 
 exports.getAdminStats = async (req, res) => {
   try {
-    const totalBooks = await Book.countDocuments();
-    const totalUsers = await require("../models/User").countDocuments();
+    const User = require("../models/User");
+    const Membership = require("../models/Membership");
+    const Feedback = require("../models/Feedback");
+    const Borrow = require("../models/Borrow");
 
-    // ✅ Corrected query to count documents with 'Borrowed' or 'Overdue' status
-    const borrowedCount = await Borrow.countDocuments({
-      $or: [
-        { status: "Borrowed" },
-        { status: "Overdue" }
-      ]
-    });
+    const totalUsers = await User.countDocuments();
+    const totalAdmins = await User.countDocuments({ role: { $in: ["admin", "super-admin"] } });
+    const totalMembers = await Membership.countDocuments({ status: "Active" });
+    const pendingRequests = await Membership.countDocuments({ status: "Pending" });
+    const totalFeedbacks = await Feedback.countDocuments();
+    const blacklistedUsers = await User.countDocuments({ isBlacklisted: true });
+    const totalBorrows = await Borrow.countDocuments();
+    const pendingBorrows = await Borrow.countDocuments({ status: "Pending" });
 
     res.json({
-      totalBooks,
-      totalUsers,
-      borrowedCount
+      success: true,
+      stats: {
+        totalUsers,
+        totalAdmins,
+        totalMembers,
+        pendingRequests,
+        totalFeedbacks,
+        blacklistedUsers,
+        totalBorrows,
+        pendingBorrows,
+      },
     });
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch stats", error: err.message });
+    console.error("Error fetching admin stats:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch admin stats", error: err.message });
   }
 };
 exports.register = async (req, res) => {
@@ -386,5 +398,21 @@ exports.verifyEmailOtp = async (req, res) => {
     res.json({ message: "Email verified successfully" });
   } catch (err) {
     res.status(500).json({ message: "Failed to verify OTP", error: err.message });
+  }
+};
+
+exports.getUserById = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.json({ success: true, user });
+  } catch (err) {
+    console.error("Error fetching user by ID:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch user", error: err.message });
   }
 };
